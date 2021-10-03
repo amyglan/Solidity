@@ -29,7 +29,7 @@ contract SmartBankAccount {
         address payable withdrawTo = payable(msg.sender);
         uint amountToTransfer = getBalance(msg.sender);
         withdrawTo.transfer(amountToTransfer);
-        totalContractBalance = totalContractBalance - amountToTransfer;
+        totalContractBalance -= amountToTransfer;
         balances[msg.sender] = 0;
     }
     
