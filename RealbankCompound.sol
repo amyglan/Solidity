@@ -31,12 +31,15 @@ contract SmartBankAccount {
     mapping(address => uint) depositTimestamps;
     
     function addBalance() public payable {
-        balances[msg.sender] = msg.value;
-        totalContractBalance = totalContractBalance + msg.value;
-        depositTimestamps[msg.sender] = block.timestamp;
+        uint256 cEthOfContractBeforeMinting = ceth.balanceOf(address(this)); //this refers to the current contract
         
         // send ethers to mint()
         ceth.mint{value: msg.value}();
+        
+        uint256 cEthOfContractAfterMinting = ceth.balanceOf(address(this)); // updated balance after minting
+        
+        uint cEthOfUser = cEthOfContractAfterMinting - cEthOfContractBeforeMinting; // the difference is the amount that has been created by the mint() function
+        balances[msg.sender] = cEthOfUser;
         
     }
     
@@ -45,19 +48,16 @@ contract SmartBankAccount {
     }
     
     function withdraw() public payable {
-        
-        //CAN YOU OPTIMIZE THIS FUNCTION TO HAVE FEWER LINES OF CODE?
-        
-        //address payable withdrawTo = payable(msg.sender);
-        uint amountToTransfer = getBalance(msg.sender);
-        totalContractBalance -= amountToTransfer;
+        ceth.redeem(balances[msg.sender]);
         balances[msg.sender] = 0;
-        ceth.redeem(getBalance(msg.sender));
     }
     
     function addMoneyToContract() public payable {
         totalContractBalance += msg.value;
     }
 
-    
+    function getUserCethBalance() public view returns(uint){
+        return balances[msg.sender];
+    }
+        
 }
