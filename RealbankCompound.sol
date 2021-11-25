@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.7.0 <0.9.0;
 
+pragma solidity >=0.7.0 <0.9.0;
 
 interface cETH {
     
@@ -14,50 +14,47 @@ interface cETH {
     function balanceOf(address owner) external view returns (uint256 balance);
 }
 
-
-contract SmartBankAccount {
-
-
-    uint totalContractBalance = 0;
+contract SmartBankAccount{
     
     address COMPOUND_CETH_ADDRESS = 0x859e9d8a4edadfEDb5A2fF311243af80F85A91b8;
     cETH ceth = cETH(COMPOUND_CETH_ADDRESS);
 
-    function getContractBalance() public view returns(uint){
-        return totalContractBalance;
-    }
     
     mapping(address => uint) balances;
-    mapping(address => uint) depositTimestamps;
-    
+   
     function addBalance() public payable {
-        uint256 cEthOfContractBeforeMinting = ceth.balanceOf(address(this)); //this refers to the current contract
-        
-        // send ethers to mint()
-        ceth.mint{value: msg.value}();
-        
-        uint256 cEthOfContractAfterMinting = ceth.balanceOf(address(this)); // updated balance after minting
-        
-        uint cEthOfUser = cEthOfContractAfterMinting - cEthOfContractBeforeMinting; // the difference is the amount that has been created by the mint() function
-        balances[msg.sender] = cEthOfUser;
-        
+        uint256 balanceBefore = ceth.balanceOf(address(this));
+        ceth.mint{value: msg.value}();   //Now we need to deposit balance to compound to earn interest
+        uint256 balanceAfter = ceth.balanceOf(address(this));
+        uint difference = balanceAfter - balanceBefore; //to know the balance of a userAddress
+        balances[msg.sender] = difference;
     }
     
-    function getBalance(address userAddress) public view returns(uint256) {
+    function getBalance(address userAddress) public view returns(uint) {
         return ceth.balanceOf(userAddress) * ceth.exchangeRateStored() / 1e18;
     }
     
     function withdraw() public payable {
-        ceth.redeem(balances[msg.sender]);
+        require(ceth.redeem(balances[msg.sender]) == 0, "Enter correct cTokens for redeeming");  
+        uint ethToWithdraw = address(this).balance;
+
+        payable(msg.sender).transfer(ethToWithdraw); //transfer to userAddress
+
         balances[msg.sender] = 0;
     }
     
-    function addMoneyToContract() public payable {
-        totalContractBalance += msg.value;
+     function getCethBalanceOfUser(address userAddress) public view returns(uint256) {
+        return balances[userAddress];
     }
-
-    function getUserCethBalance() public view returns(uint){
-        return balances[msg.sender];
+    
+    function getExchangeRate() public view returns(uint256){
+        return ceth.exchangeRateStored();
     }
-        
+    
+    receive() external payable {
+    }
+    
+    function getContractbalance() public view returns(uint){
+        return address(this).balance;
+    }
 }
